@@ -1,0 +1,45 @@
+---
+- name: Get SDDC Token
+  hosts: localhost
+  gather_facts: false
+  vars_files:
+    - ../../altnest_vars.yml
+  tasks:
+  - name: Gather SDDC Token and Register it to Variable
+    ansible.builtin.uri:
+      url: "{{SDDC_URL}}/v1/tokens"
+      headers:
+        Content_Type: application/json
+        Accept: application/json
+      body: {"username":"administrator@vsphere.local","password":"{{simple_password}}"}
+      method: POST
+      status_code: [200, 202]
+      body_format: json
+      validate_certs: no
+    register: token
+
+  - name: Get Clusters and assign to variable
+    ansible.builtin.uri:
+      url: "{{SDDC_URL}}/v1/clusters"
+      headers:
+        Content_Type: application/json
+        Accept: application/json
+        Authorization: "Bearer {{ token.json.accessToken }}"
+      method: GET
+      status_code: [200]
+      body_format: json
+      validate_certs: no
+    register: cluster
+
+  - name: Deploy Edges
+    ansible.builtin.uri:
+      url: "{{SDDC_URL}}/v1/edge-clusters"
+      headers:
+        Content_Type: application/json
+        Accept: application/json
+        Authorization: "Bearer {{ token.json.accessToken }}"
+      method: POST
+      body: {"edgeClusterName":"{{edge_cluster_name}}","edgeClusterType":"{{edge_cluster_type}}","edgeRootPassword":"{{complex_password}}","edgeAdminPassword":"{{complex_password}}","edgeAuditPassword":"{{complex_password}}","edgeFormFactor":"{{edge_cluster_form_factor}}","tier0ServicesHighAvailability":"{{edge_cluster_t0_hamode}}","mtu":9000,"asn":"{{edge_cluster_t0_asn}}","edgeNodeSpecs":[{"edgeNodeName":"{{edge_node0_name}}","managementIP":"{{edge_node0_mgmt_ip}}","managementGateway":"{{edge_node0_mgmt_gateway}}","edgeTepGateway":"{{edge_node0_tep_gateway}}","edgeTep1IP":"{{edge_node0_tep_ip1}}","edgeTep2IP":"{{edge_node0_tep_ip2}}","edgeTepVlan":"{{edge_tep_vlan}}","clusterId":"{{cluster.json.elements[0].id}}","interRackCluster":false,"uplinkNetwork":[{"uplinkVlan":"{{edge_uplink1_vlan}}","uplinkInterfaceIP":"{{edge_node0_uplink_interface0_ip}}","peerIP":"{{edge_node0_peer0_ip}}","asnPeer":"{{edge_t0_peer_asn}}","bgpPeerPassword":""},{"uplinkVlan":"{{edge_uplink2_vlan}}","uplinkInterfaceIP":"{{edge_node0_uplink_interface1_ip}}","peerIP":"{{edge_node0_peer1_ip}}","asnPeer":"{{edge_t0_peer_asn}}","bgpPeerPassword":""}]},{"edgeNodeName":"{{edge_node1_name}}","managementIP":"{{edge_node1_mgmt_ip}}","managementGateway":"{{edge_node1_mgmt_gateway}}","edgeTepGateway":"{{edge_node1_tep_gateway}}","edgeTep1IP":"{{edge_node1_tep_ip1}}","edgeTep2IP":"{{edge_node1_tep_ip2}}","edgeTepVlan":"{{edge_tep_vlan}}","clusterId":"{{cluster.json.elements[0].id}}","interRackCluster":false,"uplinkNetwork":[{"uplinkVlan":"{{edge_uplink1_vlan}}","uplinkInterfaceIP":"{{edge_node1_uplink_interface0_ip}}","peerIP":"{{edge_node1_peer0_ip}}","asnPeer":"{{edge_t0_peer_asn}}","bgpPeerPassword":""},{"uplinkVlan":"{{edge_uplink2_vlan}}","uplinkInterfaceIP":"{{edge_node1_uplink_interface1_ip}}","peerIP":"{{edge_node1_peer1_ip}}","asnPeer":"{{edge_t0_peer_asn}}","bgpPeerPassword":""}]}],"tier0RoutingType":"{{edge_node_tier0_routing_type}}","tier0Name":"{{edge_node_tier0_name}}","tier1Name":"{{edge_node_tier1_name}}","edgeClusterProfileType":"{{edge_cluster_profile_type}}"}
+      status_code: [200, 202]
+      body_format: json
+      validate_certs: no

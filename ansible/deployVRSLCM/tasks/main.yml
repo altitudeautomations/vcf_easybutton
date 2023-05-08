@@ -1,0 +1,32 @@
+---
+- name: Get SDDC Token
+  hosts: localhost
+  gather_facts: false
+  vars_files:
+    - ../../altnest_vars.yml
+  tasks:
+  - name: Gather SDDC Token and Register it to Variable
+    ansible.builtin.uri:
+      url: "{{SDDC_URL}}/v1/tokens"
+      headers:
+        Content_Type: application/json
+        Accept: application/json
+      body: {"username":"administrator@vsphere.local","password":"{{simple_password}}"}
+      method: POST
+      status_code: [200, 202]
+      body_format: json
+      validate_certs: no
+    register: token
+
+  - name: Deploy vRSLCM
+    ansible.builtin.uri:
+      url: "{{SDDC_URL}}/v1/vrslcm"
+      headers:
+        Content_Type: application/json
+        Accept: application/json
+        Authorization: "Bearer {{ token.json.accessToken }}"
+      method: POST
+      status_code: [200, 202]
+      body: {"apiPassword":"{{simple_password}}","fqdn":"{{vrslcm_fqdn}}","nsxtStandaloneTier1Ip":"{{vrslcm_tier1_ip}}","sshPassword":"{{simple_password}}"}
+      body_format: json
+      validate_certs: no

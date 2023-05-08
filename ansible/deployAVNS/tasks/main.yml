@@ -1,0 +1,49 @@
+---
+- name: Get SDDC Token
+  hosts: localhost
+  gather_facts: false
+  vars_files:
+    - ../../altnest_vars.yml
+  tasks:
+  - name: Gather SDDC Token and Register it to Variable
+    ansible.builtin.uri:
+      url: "{{SDDC_URL}}/v1/tokens"
+      headers:
+        Content_Type: application/json
+        Accept: application/json
+      body: {"username":"administrator@vsphere.local","password":"{{simple_password}}"}
+      method: POST
+      status_code: [200, 202]
+      body_format: json
+      validate_certs: no
+    register: token
+
+  - name: Get Edge Cluster ID and Register it to Variable
+    ansible.builtin.uri:
+      url: "{{SDDC_URL}}/v1/edge-clusters"
+      headers:
+        Content_Type: application/json
+        Accept: application/json
+        Authorization: "Bearer {{ token.json.accessToken }}"
+      method: GET
+      status_code: [200]
+      body_format: json
+      validate_certs: no
+    register: edges
+
+  - name: debug
+    ansible.builtin.debug:
+      msg: "{{ edges }}"
+
+  - name: Deploy AVNs
+    ansible.builtin.uri:
+      url: "{{SDDC_URL}}/v1/avns"
+      headers:
+        Content_Type: application/json
+        Accept: application/json
+        Authorization: "Bearer {{ token.json.accessToken }}"
+      method: POST
+      body: {"avns":[{"mtu":9000,"name":"{{avn0_name}}","regionType":"{{avn0_region}}","subnet":"{{avn0_subnet}}","subnetMask":"{{avn0_subnet_mask}}","gateway":"{{avn0_gateway}}","routerName":"{{avn0_router_name}}"},{"mtu":9000,"name":"{{avn1_name}}","regionType":"{{avn1_region}}","subnet":"{{avn1_subnet}}","subnetMask":"{{avn1_subnet_mask}}","gateway":"{{avn1_gateway}}","routerName":"{{avn1_router_name}}"}],"edgeClusterId":"{{edges.json.elements[0].id}}"}
+      status_code: [200, 202]
+      body_format: json
+      validate_certs: no    
